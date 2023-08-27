@@ -75,6 +75,8 @@ class ImagePanel(wx.Panel):
         self.add_tags.Bind(wx.EVT_BUTTON, self.on_add_tags)
         self.year_text = wx.StaticText(self, label="Year:" + str(datetime.date.today().year))
         self.year_text.SetFont(standart_font)
+        self.month_text = wx.StaticText(self, label='Month:')
+        self.month_text.SetFont(standart_font)
 
         # Create a ListBox to display tags
         self.available_tags_listbox = wx.ListBox(self, style=wx.LB_SINGLE | wx.LB_HSCROLL)
@@ -89,6 +91,13 @@ class ImagePanel(wx.Panel):
         self.year_slider = wx.Slider(self, value=datetime.date.today().year, minValue=2000,
                                      maxValue=datetime.date.today().year, style=wx.SL_HORIZONTAL)
         self.year_slider.Bind(wx.EVT_SCROLL, self.on_year_slider_change)
+
+        # Create a dropdownmenu for the month
+        months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December']
+        self.month_dropdown = wx.Choice(self, choices=[])
+        self.month_dropdown.SetItems(months)
+        self.month_dropdown.Bind(wx.EVT_CHOICE, self.on_month_select)
 
         # Create sizers for the different areas
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -122,9 +131,11 @@ class ImagePanel(wx.Panel):
         tag_list_sizer.Add(self.selected_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.selected_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.applied_tags_text, 0, wx.ALL, 5)
-        tag_list_sizer.Add(self.applied_tags_listbox, 0, wx.ALL, 5)
+        tag_list_sizer.Add(self.applied_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.year_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.year_slider, 0, wx.EXPAND, 5)
+        tag_list_sizer.Add(self.month_text, 0, wx.ALL, 5)
+        tag_list_sizer.Add(self.month_dropdown, 0, wx.EXPAND, 5)
 
         # Combine the image control and the list of tags
         middle_sizer.Add(self.image_ctrl, 0, wx.ALIGN_LEFT, 5)
@@ -293,6 +304,7 @@ class ImagePanel(wx.Panel):
                                 existing_tags = row[4].split(", ")
                                 updated_tags = list(set(existing_tags) | set(selected_tags))  # Combine old and new tags
                                 row[2] = self.year_slider.GetValue()  # Update year for the photo
+                                row[3] = self.month_dropdown.GetStringSelection()  # Update month for the photo
                                 row[4] = ", ".join(updated_tags)  # Update the tags for the photo
                                 rows.append(row)
                                 entry_found = True
@@ -300,7 +312,8 @@ class ImagePanel(wx.Panel):
                                 rows.append(row)
 
                 if not entry_found:
-                    rows.append([location, filename, self.year_slider.GetValue(), "", ", ".join(selected_tags)])
+                    rows.append([location, filename, self.year_slider.GetValue(),
+                                 self.month_dropdown.GetStringSelection(), ", ".join(selected_tags)])
 
                 # Write the updated or new rows back to the photos CSV file
                 with open(self.photos_file_name, "w", newline="") as csvfile:
@@ -326,18 +339,41 @@ class ImagePanel(wx.Panel):
     def load_photo_applied_info(self, photo_filename):
         self.applied_tags_listbox.Clear()  # Clear the applied tags listbox
 
+        # Reset year and month values in case the file is not found
+        self.year_slider.SetValue(datetime.date.today().year)
+        self.year_text.SetLabel('Year: ')
+        self.month_dropdown.SetSelection(wx.NOT_FOUND)
+
         # Load the photo details from the photos.csv file
         if os.path.exists(self.photos_file_name):
             with open(self.photos_file_name, "r") as f:
                 reader = csv.reader(f)
                 header = next(reader)  # Read the header
                 for row in reader:
-                    _, filename, year, _, tags = row  # Assuming the structure is Location, Filename, Year, Month, Tags
+                    _, filename, year, month, tags = row  # Assuming the structure is Location, Filename, Year,
+                    # Month, Tags
                     if filename == photo_filename:
                         applied_tags = tags.split(", ")
                         self.applied_tags_listbox.Set(applied_tags)  # Set the tags in the applied tags listbox
-                        self.year_slider.SetValue(int(year))  # Update the slider to the loaded year
-                        self.year_text.SetLabel('Year: ' + year)  # Set the year text to the loaded year
+
+                        # Set the year slider's value to the loaded year
+                        try:
+                            year_value = int(year)
+                            if self.year_slider.GetMin() <= year_value <= self.year_slider.GetMax():
+                                self.year_slider.SetValue(year_value)
+                            else:
+                                self.year_slider.SetValue(datetime.date.today().year)  # Reset to current year
+                        except ValueError:
+                            self.year_slider.SetValue(datetime.date.today().year)  # Reset to current year
+                        self.year_text.SetLabel('Year: ' + year)
+
+                        # Set the selected month in the dropdown
+                        month_index = self.month_dropdown.FindString(month)
+                        if month_index != wx.NOT_FOUND:
+                            self.month_dropdown.SetSelection(month_index)
+                        else:
+                            self.month_dropdown.SetSelection(wx.NOT_FOUND)  # Set the dropdown to a blank state
+
                         break  # No need to continue searching
 
     def on_double_click_available_tag(self, event):
@@ -391,6 +427,11 @@ class ImagePanel(wx.Panel):
 
         self.set_status('RESET')
 
+    def on_month_select(self, event):
+        selected_month = self.month_dropdown.GetStringSelection()
+
+        self.set_status('RESET')
+
 
 class MainFrame(wx.Frame):
     def __init__(self, tags_file_name, photos_file_name):
@@ -411,5 +452,6 @@ def start_tag_photos(tags_file_name, photos_file_name):
 if __name__ == '__main__':
     start_tag_photos("tags.csv", "photos.csv")
 
+# TODO: When creating multiple tags it sometimes adds a blanc tag to the added tags
 # TODO: Delete photo??
-# TODO: Delete Tag
+# TODO: Delete Tag??
