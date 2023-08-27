@@ -156,18 +156,18 @@ class ImagePanel(wx.Panel):
         if tag:
             lowercase_tag = tag.lower()  # Convert the tag to lowercase
 
-            if not tag_exists(tag):
-                save_tag_to_csv(tag, self.tags_file_name)
+            if not tag_exists(lowercase_tag):
+                save_tag_to_csv(lowercase_tag, self.tags_file_name)
 
                 # Add new tag to the available tags list in the correct alphabetical position
                 tags = self.available_tags_listbox.GetStrings()
-                tags.append(tag)
+                tags.append(lowercase_tag)
                 tags.sort()  # Sort the tags alphabetically
                 self.available_tags_listbox.SetItems(tags)
 
-                # Add new tag to the applied tags list in the correct alphabetical position
+                # Add new tag to the selected tags list in the correct alphabetical position
                 tags = self.selected_tags_listbox.GetStrings()
-                tags.append(tag)
+                tags.append(lowercase_tag)
                 tags.sort()  # Sort the tags alphabetically
                 self.selected_tags_listbox.SetItems(tags)
 
