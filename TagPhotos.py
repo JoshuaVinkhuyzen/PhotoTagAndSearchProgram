@@ -80,6 +80,7 @@ class ImagePanel(wx.Panel):
         self.selected_tags_listbox = wx.ListBox(self, style=wx.LB_SINGLE | wx.LB_HSCROLL)
         self.selected_tags_listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click_selected_tag)
         self.applied_tags_listbox = wx.ListBox(self, style=wx.LB_SINGLE | wx.LB_HSCROLL)
+        self.applied_tags_listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click_applied_tags)
 
         # Create sizers for the different areas
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -294,6 +295,9 @@ class ImagePanel(wx.Panel):
         if status == 'TAGS_ADDED':
             self.status_text.SetLabel('Added tags')
             self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
+        if status == 'TAG_REMOVED':
+            self.status_text.SetLabel('Tag removed')
+            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
 
     def populate_available_tags_listbox(self):
         # Read tags from the CSV file and populate the ListBox
@@ -333,6 +337,12 @@ class ImagePanel(wx.Panel):
         selected_tag = self.selected_tags_listbox.GetStringSelection()
         if selected_tag:
             self.selected_tags_listbox.Delete(self.selected_tags_listbox.GetSelection())
+
+    def on_double_click_applied_tags(self, event):
+        selected_tag = self.applied_tags_listbox.GetStringSelection()
+        if selected_tag:
+            self.applied_tags_listbox.Delete(self.applied_tags_listbox.GetSelection())
+            self.set_status('TAG_REMOVED')
 
 
 class MainFrame(wx.Frame):
