@@ -134,6 +134,23 @@ class ImagePanel(wx.Panel):
         main_sizer.Fit(parent)
         self.Layout()
 
+    def set_status(self, status):
+        if status == 'RESET':
+            self.status_text.SetLabel('Status')
+            self.status_text.SetForegroundColour(wx.Colour(0, 0, 0))
+        if status == 'TAG_SAVED':
+            self.status_text.SetLabel('Saved new tag')
+            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
+        if status == 'TAG_EXISTS':
+            self.status_text.SetLabel('Tag already exists')
+            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
+        if status == 'TAGS_ADDED':
+            self.status_text.SetLabel('Added tags')
+            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
+        if status == 'TAG_REMOVED':
+            self.status_text.SetLabel('Tag removed')
+            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
+
     def on_create_tag(self, event):
         tag = self.tag_input.GetValue().strip()  # Get the tag text and remove leading/trailing spaces
         if tag:
@@ -282,23 +299,6 @@ class ImagePanel(wx.Panel):
                 self.set_status('TAGS_ADDED')
                 self.populate_applied_tags_listbox(filename)
 
-    def set_status(self, status):
-        if status == 'RESET':
-            self.status_text.SetLabel('Status')
-            self.status_text.SetForegroundColour(wx.Colour(0, 0, 0))
-        if status == 'TAG_SAVED':
-            self.status_text.SetLabel('Saved new tag')
-            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
-        if status == 'TAG_EXISTS':
-            self.status_text.SetLabel('Tag already exists')
-            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
-        if status == 'TAGS_ADDED':
-            self.status_text.SetLabel('Added tags')
-            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
-        if status == 'TAG_REMOVED':
-            self.status_text.SetLabel('Tag removed')
-            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
-
     def populate_available_tags_listbox(self):
         # Read tags from the CSV file and populate the ListBox
         tags = []
@@ -341,8 +341,36 @@ class ImagePanel(wx.Panel):
     def on_double_click_applied_tags(self, event):
         selected_tag = self.applied_tags_listbox.GetStringSelection()
         if selected_tag:
-            self.applied_tags_listbox.Delete(self.applied_tags_listbox.GetSelection())
-            self.set_status('TAG_REMOVED')
+            image_files = [f for f in os.listdir(self.image_folder) if f.lower().endswith(".jpg")]
+            photo_filename = image_files[self.image_index]
+
+            # Find the corresponding row in the photos CSV file
+            rows = []
+            entry_found = False
+            if os.path.exists(self.photos_file_name):
+                with open(self.photos_file_name, "r") as csvfile:
+                    reader = csv.reader(csvfile)
+                    for row in reader:
+                        _, filename, _, tags = row
+                        if filename == photo_filename:
+                            applied_tags = [tag.strip() for tag in tags.split(", ")]
+                            if selected_tag in applied_tags:
+                                applied_tags.remove(selected_tag)  # Remove the tag
+                            row[3] = ", ".join(applied_tags)  # Update the tags for the photo
+                            rows.append(row)
+                            entry_found = True
+                        else:
+                            rows.append(row)
+
+            if entry_found:
+                # Write the updated rows back to the photos CSV file
+                with open(self.photos_file_name, "w", newline="") as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerows(rows)
+
+                # Update the applied tags listbox and status
+                self.populate_applied_tags_listbox(photo_filename)
+                self.set_status('TAG_REMOVED')
 
 
 class MainFrame(wx.Frame):
