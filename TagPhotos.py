@@ -166,10 +166,10 @@ class ImagePanel(wx.Panel):
                 self.available_tags_listbox.SetItems(tags)
 
                 # Add new tag to the applied tags list in the correct alphabetical position
-                tags = self.applied_tags_listbox.GetStrings()
+                tags = self.selected_tags_listbox.GetStrings()
                 tags.append(tag)
                 tags.sort()  # Sort the tags alphabetically
-                self.applied_tags_listbox.SetItems(tags)
+                self.selected_tags_listbox.SetItems(tags)
 
                 self.set_status('TAG_SAVED')
             else:
