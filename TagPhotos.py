@@ -72,6 +72,8 @@ class ImagePanel(wx.Panel):
         self.next_button.Bind(wx.EVT_BUTTON, self.on_next)
         self.add_tags = wx.Button(self, label='Add Tags')
         self.add_tags.Bind(wx.EVT_BUTTON, self.on_add_tags)
+        self.year_text = wx.StaticText(self, label="Year:")
+        self.year_text.SetFont(standart_font)
 
         # Create a ListBox to display tags
         self.available_tags_listbox = wx.ListBox(self, style=wx.LB_SINGLE | wx.LB_HSCROLL)
@@ -81,6 +83,10 @@ class ImagePanel(wx.Panel):
         self.selected_tags_listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click_selected_tag)
         self.applied_tags_listbox = wx.ListBox(self, style=wx.LB_SINGLE | wx.LB_HSCROLL)
         self.applied_tags_listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click_applied_tags)
+
+        # Create a slider to select the year
+        self.year_slider = wx.Slider(self, value=2000, minValue=1900, maxValue=2099, style=wx.SL_HORIZONTAL)
+        self.year_slider.Bind(wx.EVT_SCROLL, self.on_year_slider_change)
 
         # Create sizers for the different areas
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -108,13 +114,15 @@ class ImagePanel(wx.Panel):
         top_sizer.AddSpacer(500)  # TODO: Push the create_tag_sizer to the right !!TEMPORARY SOLUTION!!
         top_sizer.Add(create_tag_sizer, 1, wx.EXPAND, 5)
 
-        # Merge the tag list and selected tags to the tag_list_sizer
+        # Merge everything required to see and add tags and year
         tag_list_sizer.Add(self.available_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.available_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.selected_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.selected_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.applied_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.applied_tags_listbox, 0, wx.ALL, 5)
+        tag_list_sizer.Add(self.year_text, 0, wx.ALL, 5)
+        tag_list_sizer.Add(self.year_slider, 0, wx.EXPAND, 5)
 
         # Combine the image control and the list of tags
         middle_sizer.Add(self.image_ctrl, 0, wx.ALIGN_LEFT, 5)
@@ -372,6 +380,12 @@ class ImagePanel(wx.Panel):
                 self.populate_applied_tags_listbox(photo_filename)
                 self.set_status('TAG_REMOVED')
 
+    def on_year_slider_change(self, event):
+        selected_year = self.year_slider.GetValue()
+        self.year_text.SetLabel('Year: ' + str(selected_year))
+
+        self.set_status('RESET')
+
 
 class MainFrame(wx.Frame):
     def __init__(self, tags_file_name, photos_file_name):
@@ -391,7 +405,6 @@ def start_tag_photos(tags_file_name, photos_file_name):
 
 if __name__ == '__main__':
     start_tag_photos("tags.csv", "photos.csv")
-
 
 # TODO: Delete photo??
 # TODO: Delete Tag
