@@ -1,6 +1,7 @@
 import wx
 import os
 import csv
+import datetime
 
 
 def save_tag_to_csv(tag, csv_filename):
@@ -72,7 +73,7 @@ class ImagePanel(wx.Panel):
         self.next_button.Bind(wx.EVT_BUTTON, self.on_next)
         self.add_tags = wx.Button(self, label='Add Tags')
         self.add_tags.Bind(wx.EVT_BUTTON, self.on_add_tags)
-        self.year_text = wx.StaticText(self, label="Year:")
+        self.year_text = wx.StaticText(self, label="Year:" + str(datetime.date.today().year))
         self.year_text.SetFont(standart_font)
 
         # Create a ListBox to display tags
@@ -85,7 +86,8 @@ class ImagePanel(wx.Panel):
         self.applied_tags_listbox.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click_applied_tags)
 
         # Create a slider to select the year
-        self.year_slider = wx.Slider(self, value=2000, minValue=1900, maxValue=2099, style=wx.SL_HORIZONTAL)
+        self.year_slider = wx.Slider(self, value=datetime.date.today().year, minValue=2000,
+                                     maxValue=datetime.date.today().year, style=wx.SL_HORIZONTAL)
         self.year_slider.Bind(wx.EVT_SCROLL, self.on_year_slider_change)
 
         # Create sizers for the different areas
@@ -239,7 +241,7 @@ class ImagePanel(wx.Panel):
 
                     image_path = os.path.join(self.image_folder, image_files[self.image_index])
                     filename = os.path.basename(image_path)
-                    self.populate_applied_tags_listbox(filename)
+                    self.load_photo_applied_info(filename)
 
     def on_previous(self, event):
         if hasattr(self, "image_index") and self.image_index > 0:
@@ -249,7 +251,7 @@ class ImagePanel(wx.Panel):
             image_files = [f for f in os.listdir(self.image_folder) if f.lower().endswith(".jpg")]
             image_path = os.path.join(self.image_folder, image_files[self.image_index])
             filename = os.path.basename(image_path)
-            self.populate_applied_tags_listbox(filename)
+            self.load_photo_applied_info(filename)
 
             self.populate_available_tags_listbox()
 
@@ -264,7 +266,7 @@ class ImagePanel(wx.Panel):
 
                 image_path = os.path.join(self.image_folder, image_files[self.image_index])
                 filename = os.path.basename(image_path)
-                self.populate_applied_tags_listbox(filename)
+                self.load_photo_applied_info(filename)
 
                 self.populate_available_tags_listbox()
 
@@ -288,16 +290,17 @@ class ImagePanel(wx.Panel):
                         reader = csv.reader(csvfile)
                         for row in reader:
                             if row[0] == location and row[1] == filename:
-                                existing_tags = row[3].split(", ")
+                                existing_tags = row[4].split(", ")
                                 updated_tags = list(set(existing_tags) | set(selected_tags))  # Combine old and new tags
-                                row[3] = ", ".join(updated_tags)  # Update the tags for the photo
+                                row[2] = self.year_slider.GetValue()  # Update year for the photo
+                                row[4] = ", ".join(updated_tags)  # Update the tags for the photo
                                 rows.append(row)
                                 entry_found = True
                             else:
                                 rows.append(row)
 
                 if not entry_found:
-                    rows.append([location, filename, "", ", ".join(selected_tags)])
+                    rows.append([location, filename, self.year_slider.GetValue(), "", ", ".join(selected_tags)])
 
                 # Write the updated or new rows back to the photos CSV file
                 with open(self.photos_file_name, "w", newline="") as csvfile:
@@ -305,7 +308,7 @@ class ImagePanel(wx.Panel):
                     writer.writerows(rows)
 
                 self.set_status('TAGS_ADDED')
-                self.populate_applied_tags_listbox(filename)
+                self.load_photo_applied_info(filename)
 
     def populate_available_tags_listbox(self):
         # Read tags from the CSV file and populate the ListBox
@@ -320,7 +323,7 @@ class ImagePanel(wx.Panel):
 
         self.available_tags_listbox.Set(tags)
 
-    def populate_applied_tags_listbox(self, photo_filename):
+    def load_photo_applied_info(self, photo_filename):
         self.applied_tags_listbox.Clear()  # Clear the applied tags listbox
 
         # Load the photo details from the photos.csv file
@@ -329,10 +332,12 @@ class ImagePanel(wx.Panel):
                 reader = csv.reader(f)
                 header = next(reader)  # Read the header
                 for row in reader:
-                    _, filename, _, tags = row  # Assuming the structure is Location, Filename, Year, Tags
+                    _, filename, year, _, tags = row  # Assuming the structure is Location, Filename, Year, Month, Tags
                     if filename == photo_filename:
                         applied_tags = tags.split(", ")
-                        self.applied_tags_listbox.Set(applied_tags)
+                        self.applied_tags_listbox.Set(applied_tags)  # Set the tags in the applied tags listbox
+                        self.year_slider.SetValue(int(year))  # Update the slider to the loaded year
+                        self.year_text.SetLabel('Year: ' + year)  # Set the year text to the loaded year
                         break  # No need to continue searching
 
     def on_double_click_available_tag(self, event):
@@ -359,12 +364,12 @@ class ImagePanel(wx.Panel):
                 with open(self.photos_file_name, "r") as csvfile:
                     reader = csv.reader(csvfile)
                     for row in reader:
-                        _, filename, _, tags = row
+                        _, filename, _, _, tags = row
                         if filename == photo_filename:
                             applied_tags = [tag.strip() for tag in tags.split(", ")]
                             if selected_tag in applied_tags:
                                 applied_tags.remove(selected_tag)  # Remove the tag
-                            row[3] = ", ".join(applied_tags)  # Update the tags for the photo
+                            row[4] = ", ".join(applied_tags)  # Update the tags for the photo
                             rows.append(row)
                             entry_found = True
                         else:
@@ -377,7 +382,7 @@ class ImagePanel(wx.Panel):
                     writer.writerows(rows)
 
                 # Update the applied tags listbox and status
-                self.populate_applied_tags_listbox(photo_filename)
+                self.load_photo_applied_info(photo_filename)
                 self.set_status('TAG_REMOVED')
 
     def on_year_slider_change(self, event):
