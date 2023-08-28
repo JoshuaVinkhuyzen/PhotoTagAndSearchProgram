@@ -444,9 +444,14 @@ class MainFrame(wx.Frame):
 
 
 def start_tag_photos(tags_file_name, photos_file_name):
-    app = wx.App(redirect=False)
+    app = wx.GetApp()  # Get the existing wx.App instance
+    if app is None:
+        app = wx.App()  # Create an instance only if it doesn't exist
     frame = MainFrame(tags_file_name, photos_file_name)  # Pass the CSV files
-    app.MainLoop()
+    if app.IsMainLoopRunning():
+        frame.Show()
+    else:
+        app.MainLoop()
 
 
 if __name__ == '__main__':

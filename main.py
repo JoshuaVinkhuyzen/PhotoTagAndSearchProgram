@@ -1,16 +1,17 @@
 from HomeScreen import start_home_screen
 from SearchPhotos import start_search_photos
-from TagPhotos import start_tag_photos
+from TagPhotos import start_tag_photos, MainFrame
 
-tagscsvfile = "tags.csv"
+tags_csv_file = "tags.csv"
+photos_csv_file = "photos.csv"
 
 
 # LUT[] = {folder_name, file_name, tags} jaar? locatie?
 # Animals_LUT[] = {folder_name, file_name}
 
 # geef foto's een tag
-def tag_photos(tagsfile):
-    start_tag_photos(tagsfile)
+def tag_photos(tagsfile, photosfile):
+    start_tag_photos(tagsfile, photosfile)
     return ()
 
 
@@ -37,6 +38,6 @@ def home_screen():
 if __name__ == '__main__':
     start_program = home_screen()
     if not start_program:
-        tag_photos(tagscsvfile)
+        tag_photos(tags_csv_file, photos_csv_file)
     if start_program:
         search_photos()

@@ -84,9 +84,14 @@ class MainFrame(wx.Frame):
 
 
 def start_search_photos():
-    app = wx.App(redirect=False)
+    app = wx.GetApp()  # Get the existing wx.App instance
+    if app is None:
+        app = wx.App()  # Create an instance only if it doesn't exist
     frame = MainFrame()
-    app.MainLoop()
+    if app.IsMainLoopRunning():
+        frame.Show()
+    else:
+        app.MainLoop()
 
 
 if __name__ == '__main__':
