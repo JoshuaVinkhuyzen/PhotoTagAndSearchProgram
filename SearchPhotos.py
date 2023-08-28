@@ -2,28 +2,7 @@ import wx
 import os
 import csv
 import datetime
-
-
-def save_tag_to_csv(tag, csv_filename):
-    if not os.path.exists(csv_filename):
-        with open(csv_filename, "w") as f:
-            f.write("Tag\n")  # Write the header if the file doesn't exist
-
-    lowercase_tag = tag.lower()  # Convert the tag to lowercase
-    with open(csv_filename, "a") as f:
-        f.write(lowercase_tag + "\n")  # Append the lowercase tag to the CSV file
-
-
-def tag_exists(tag):
-    lowercase_tag = tag.lower()  # Convert the tag to lowercase
-    csv_filename = "tags.csv"
-
-    if os.path.exists(csv_filename):
-        with open(csv_filename, "r") as f:
-            for line in f:
-                if lowercase_tag in line.lower():  # Check if the lowercase tag exists in the CSV file
-                    return True
-    return False
+import subprocess
 
 
 class ImagePanel(wx.Panel):
@@ -53,6 +32,8 @@ class ImagePanel(wx.Panel):
         self.file_name.SetFont(standart_font)
         self.status_text = wx.StaticText(self, label='Status')
         self.status_text.SetFont(standart_font)
+        self.search_text = wx.StaticText(self, label='Search: ')
+        self.search_text.SetFont(standart_font)
         self.available_tags_text = wx.StaticText(self, label='Available Tags:')
         self.available_tags_text.SetFont(standart_font)
         self.selected_tags_text = wx.StaticText(self, label='Selected Tags:')
@@ -60,19 +41,19 @@ class ImagePanel(wx.Panel):
         self.applied_tags_text = wx.StaticText(self, label='Applied Tags:')
         self.applied_tags_text.SetFont(standart_font)
 
+        # Create a black line widget
+        self.line = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
+
         # Create and bind the buttons and text inputs
-        self.create_tag = wx.Button(self, label='Create Tag')
-        self.create_tag.Bind(wx.EVT_BUTTON, self.on_create_tag)
         self.tag_input = wx.TextCtrl(self, style=wx.TE_PROCESS_ENTER)  # TextCtrl for tag input
-        self.tag_input.Bind(wx.EVT_TEXT_ENTER, self.on_create_tag)
-        self.browse_button = wx.Button(self, label='Browse')
-        self.browse_button.Bind(wx.EVT_BUTTON, self.on_browse)
+        self.show_in_explore_button = wx.Button(self, label='Show in explore')
+        self.show_in_explore_button.Bind(wx.EVT_BUTTON, self.on_show_in_explore)
         self.previous_button = wx.Button(self, label='Previous')
         self.previous_button.Bind(wx.EVT_BUTTON, self.on_previous)
         self.next_button = wx.Button(self, label='Next')
         self.next_button.Bind(wx.EVT_BUTTON, self.on_next)
-        self.add_tags = wx.Button(self, label='Add Tags')
-        self.add_tags.Bind(wx.EVT_BUTTON, self.on_add_tags)
+        self.start_search_button = wx.Button(self, label='Search')
+        self.start_search_button.Bind(wx.EVT_BUTTON, self.on_start_search)
         self.year_text = wx.StaticText(self, label="Year:" + str(datetime.date.today().year))
         self.year_text.SetFont(standart_font)
         self.month_text = wx.StaticText(self, label='Month:')
@@ -104,7 +85,7 @@ class ImagePanel(wx.Panel):
         top_sizer = wx.BoxSizer(wx.HORIZONTAL)
         middle_sizer = wx.BoxSizer(wx.HORIZONTAL)
         file_info_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        create_tag_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        search_tag_sizer = wx.BoxSizer(wx.HORIZONTAL)
         tag_list_sizer = wx.BoxSizer(wx.VERTICAL)
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -115,27 +96,28 @@ class ImagePanel(wx.Panel):
         file_info_sizer.AddSpacer(500)
         file_info_sizer.Add(self.status_text, 0, wx.ALL, 5)
 
-        # Add the create tags part to the create_tag_sizer
-        create_tag_sizer.Add(self.create_tag, 0, wx.ALL | wx.EXPAND, 5)
-        create_tag_sizer.Add(self.tag_input, 0, wx.ALL, 5)
+        # Add the create tags part to the search_tag_sizer
+        search_tag_sizer.Add(self.search_text, 0, wx.ALL | wx.EXPAND, 5)
+        search_tag_sizer.Add(self.tag_input, 0, wx.ALL, 5)
 
         # Merge the info sizer and the add tags sizer to top_sizer
-        top_sizer.Add(self.browse_button, 1, wx.ALL | wx.EXPAND | wx.ALIGN_LEFT, 5)
+        top_sizer.Add(self.show_in_explore_button, 1, wx.ALL | wx.EXPAND | wx.ALIGN_LEFT, 5)
         top_sizer.Add(file_info_sizer, 0, wx.EXPAND | wx.ALIGN_LEFT, 5)
-        top_sizer.AddSpacer(500)  # TODO: Push the create_tag_sizer to the right !!TEMPORARY SOLUTION!!
-        top_sizer.Add(create_tag_sizer, 1, wx.EXPAND, 5)
+        top_sizer.AddSpacer(500)  # TODO: Push the search_tag_sizer to the right !!TEMPORARY SOLUTION!!
+        top_sizer.Add(search_tag_sizer, 1, wx.EXPAND, 5)
 
         # Merge everything required to see and add tags and year
         tag_list_sizer.Add(self.available_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.available_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.selected_tags_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.selected_tags_listbox, 0, wx.EXPAND, 5)
-        tag_list_sizer.Add(self.applied_tags_text, 0, wx.ALL, 5)
-        tag_list_sizer.Add(self.applied_tags_listbox, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.year_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.year_slider, 0, wx.EXPAND, 5)
         tag_list_sizer.Add(self.month_text, 0, wx.ALL, 5)
         tag_list_sizer.Add(self.month_dropdown, 0, wx.EXPAND, 5)
+        tag_list_sizer.Add(self.line, 0, wx.EXPAND | wx.TOP, 5)
+        tag_list_sizer.Add(self.applied_tags_text, 0, wx.ALL, 5)
+        tag_list_sizer.Add(self.applied_tags_listbox, 0, wx.EXPAND, 5)
 
         # Combine the image control and the list of tags
         middle_sizer.Add(self.image_ctrl, 0, wx.ALIGN_LEFT, 5)
@@ -144,7 +126,7 @@ class ImagePanel(wx.Panel):
         # Add the buttons to the button_sizer
         button_sizer.Add(self.previous_button, 2, wx.ALL | wx.EXPAND, 5)
         button_sizer.Add(self.next_button, 2, wx.ALL | wx.EXPAND, 5)
-        button_sizer.Add(self.add_tags, 1, wx.ALL | wx.EXPAND, 5)
+        button_sizer.Add(self.start_search_button, 1, wx.ALL | wx.EXPAND, 5)
 
         # Add the different elements to the main sizer in the correct order
         main_sizer.Add(top_sizer, 0, wx.ALL | wx.ALIGN_TOP, 5)
@@ -159,44 +141,6 @@ class ImagePanel(wx.Panel):
         if status == 'RESET':
             self.status_text.SetLabel('Status')
             self.status_text.SetForegroundColour(wx.Colour(0, 0, 0))
-        if status == 'TAG_SAVED':
-            self.status_text.SetLabel('Saved new tag')
-            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
-        if status == 'TAG_EXISTS':
-            self.status_text.SetLabel('Tag already exists')
-            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
-        if status == 'TAGS_ADDED':
-            self.status_text.SetLabel('Added tags')
-            self.status_text.SetForegroundColour(wx.Colour(0, 128, 0))
-        if status == 'TAG_REMOVED':
-            self.status_text.SetLabel('Tag removed')
-            self.status_text.SetForegroundColour(wx.Colour(128, 0, 0))
-
-    def on_create_tag(self, event):
-        tag = self.tag_input.GetValue().strip()  # Get the tag text and remove leading/trailing spaces
-        if tag:
-            lowercase_tag = tag.lower()  # Convert the tag to lowercase
-
-            if not tag_exists(lowercase_tag):
-                save_tag_to_csv(lowercase_tag, self.tags_file_name)
-
-                # Add new tag to the available tags list in the correct alphabetical position
-                tags = self.available_tags_listbox.GetStrings()
-                tags.append(lowercase_tag)
-                tags.sort()  # Sort the tags alphabetically
-                self.available_tags_listbox.SetItems(tags)
-
-                # Add new tag to the selected tags list in the correct alphabetical position
-                tags = self.selected_tags_listbox.GetStrings()
-                tags.append(lowercase_tag)
-                tags.sort()  # Sort the tags alphabetically
-                self.selected_tags_listbox.SetItems(tags)
-
-                self.set_status('TAG_SAVED')
-            else:
-                self.set_status('TAG_EXISTS')
-
-            self.tag_input.SetValue("")  # Clear the text input after saving
 
     def display_image(self):
         if hasattr(self, "image_folder"):
@@ -238,7 +182,7 @@ class ImagePanel(wx.Panel):
                 self.file_location.SetLabel('Location: ' + os.path.basename(os.path.dirname(image_path)))
                 self.file_name.SetLabel('Name: ' + os.path.basename(image_path))
 
-    def on_browse(self, event):
+    def on_show_in_explore(self, event):
         wildcard = "JPEG files (*.jpg)|*.jpg"
         with wx.DirDialog(None, "Choose a folder", style=wx.DD_DEFAULT_STYLE) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
@@ -253,6 +197,26 @@ class ImagePanel(wx.Panel):
                     image_path = os.path.join(self.image_folder, image_files[self.image_index])
                     filename = os.path.basename(image_path)
                     self.load_photo_applied_info(filename)
+
+    # def on_show_in_explore(self, event):
+    #     wildcard = "JPEG files (*.jpg)|*.jpg"
+    #     with wx.DirDialog(None, "Choose a folder", style=wx.DD_DEFAULT_STYLE) as dialog:
+    #         if dialog.ShowModal() == wx.ID_OK:
+    #             selected_folder = dialog.GetPath()
+    #
+    #             # Use subprocess to open the selected folder in the default file explorer
+    #             subprocess.Popen(['explorer', selected_folder])
+    #
+    #             image_files = [f for f in os.listdir(selected_folder) if f.lower().endswith(".jpg")]
+    #
+    #             if image_files:
+    #                 self.image_index = 0
+    #                 self.image_folder = selected_folder
+    #                 self.display_image()
+    #
+    #                 image_path = os.path.join(self.image_folder, image_files[self.image_index])
+    #                 filename = os.path.basename(image_path)
+    #                 self.load_photo_applied_info(filename)
 
     def on_previous(self, event):
         if hasattr(self, "image_index") and self.image_index > 0:
@@ -283,7 +247,7 @@ class ImagePanel(wx.Panel):
 
                 self.set_status('RESET')
 
-    def on_add_tags(self, event):
+    def on_start_search(self, event):
         if hasattr(self, "image_folder") and self.image_index >= 0:
             image_files = [f for f in os.listdir(self.image_folder) if f.lower().endswith(".jpg")]
 
@@ -443,7 +407,7 @@ class MainFrame(wx.Frame):
         self.Show()
 
 
-def start_tag_photos(tags_file_name, photos_file_name):
+def start_search_photos(tags_file_name, photos_file_name):
     app = wx.GetApp()  # Get the existing wx.App instance
     if app is None:
         app = wx.App()  # Create an instance only if it doesn't exist
@@ -455,7 +419,7 @@ def start_tag_photos(tags_file_name, photos_file_name):
 
 
 if __name__ == '__main__':
-    start_tag_photos("tags.csv", "photos.csv")
+    start_search_photos("tags.csv", "photos.csv")
 
 # TODO: Everything!!!
 # TODO: Add search bar
