@@ -99,3 +99,8 @@ if __name__ == '__main__':
     # app = wx.App(False)
     # frame = MainFrame()
     # app.MainLoop()
+
+# TODO: Everything!!!
+# TODO: Add search bar
+# TODO: Add tag selector
+# TODO: Show information
